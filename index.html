@@ -1,1 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Market Link — Seller Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --line: #2a3544;
+      --text: #e8eef5;
+      --muted: #8b9bb0;
+      --accent: #3dd68c;
+      --input: #121a24;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(900px 500px at 50% -10%, #1a3a2a 0%, var(--bg) 55%);
+    }
+    .wrap { max-width: 420px; margin: 0 auto; padding: 28px 14px 40px; }
+    .pill {
+      text-align: center;
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    h1 { text-align: center; margin: 0 0 6px; font-size: 26px; }
+    .sub { text-align: center; color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
+    input {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary {
+      background: var(--accent);
+      color: #0a1a12;
+      width: 100%;
+      margin-top: 14px;
+    }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .tab {
+      background: var(--input);
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 12px;
+    }
+    .tab.active {
+      background: #1a3a2a;
+      color: var(--accent);
+      border-color: #2f5a42;
+    }
+    .error, .ok {
+      display: none;
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .error { background: #3a1515; color: #ffb4b4; border: 1px solid #5c2424; }
+    .ok { background: #14301a; color: #b7f5c2; border: 1px solid #2a5a36; }
+    .error.show, .ok.show { display: block; }
+    .hidden { display: none !important; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .note {
+      background: #1a3a2a;
+      border: 1px solid #2f5a42;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="pill">MARKET LINK</p>
+    <h1>Seller Portal</h1>
+    <p class="sub">Paid access · Your own shop link · WhatsApp orders</p>
 
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" type="button">Login</button>
+      <button class="tab" id="tabRegister" type="button">Register</button>
+    </div>
+
+    <div class="card" id="loginBox">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" />
+      <label>Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" />
+      <button class="primary" id="loginBtn" type="button">Sign in</button>
+      <div class="error" id="loginError"></div>
+    </div>
+
+    <div class="card hidden" id="registerBox">
+      <div class="note">
+        Registration needs a <b>code from Market Link</b> after payment.
+        If you don’t have a code yet, contact the admin to pay and get one.
+      </div>
+
+      <label>Registration code</label>
+      <input id="regCode" type="text" placeholder="e.g. ML-ABC123" />
+      <p class="hint">Code you received after payment</p>
+
+      <label>Business name</label>
+      <input id="regBusiness" type="text" placeholder="e.g. Mama Ada Fashion" />
+      <label>WhatsApp number</label>
+      <input id="regWhatsapp" type="text" placeholder="2348012345678" />
+      <p class="hint">Country code + number, no + or spaces</p>
+      <label>Shop link name (slug)</label>
+      <input id="regSlug" type="text" placeholder="mama-ada" />
+      <p class="hint">Your shop: .../shop.html?s=mama-ada</p>
+      <label>Email</label>
+      <input id="regEmail" type="email" autocomplete="username" />
+      <label>Password</label>
+      <input id="regPassword" type="password" autocomplete="new-password" />
+      <button class="primary" id="registerBtn" type="button">Create shop account</button>
+      <div class="error" id="regError"></div>
+      <div class="ok" id="regOk"></div>
+    </div>
+  </div>
+
+  <script>
+    var SUPABASE_URL = "https://mjtpfusiurqvlaxkpenm.supabase.co";
+    var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdHBmdXNpdXJxdmxheGtwZW5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4ODMyNDksImV4cCI6MjEwMzQ1OTI0OX0.Irdh4ERkCOMCy_kp8onh61N8sBD77YscCp1e5kvvXL8";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var loginBox = document.getElementById("loginBox");
+    var registerBox = document.getElementById("registerBox");
+    var tabLogin = document.getElementById("tabLogin");
+    var tabRegister = document.getElementById("tabRegister");
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function cleanSlug(s) {
+      return String(s || "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+    }
+    function cleanWhatsapp(s) {
+      var n = String(s || "").replace(/\D/g, "");
+      if (n.length === 11 && n.charAt(0) === "0") n = "234" + n.slice(1);
+      if (n.indexOf("2340") === 0 && n.length === 14) n = "234" + n.slice(4);
+      return n;
+    }
+    function cleanCode(s) {
+      return String(s || "").trim().toUpperCase().replace(/\s+/g, "-");
+    }
+
+    tabLogin.onclick = function() {
+      tabLogin.classList.add("active");
+      tabRegister.classList.remove("active");
+      loginBox.classList.remove("hidden");
+      registerBox.classList.add("hidden");
+    };
+
+    tabRegister.onclick = function() {
+      tabRegister.classList.add("active");
+      tabLogin.classList.remove("active");
+      registerBox.classList.remove("hidden");
+      loginBox.classList.add("hidden");
+    };
+
+    document.getElementById("regBusiness").oninput = function() {
+      var slug = document.getElementById("regSlug");
+      if (!slug.dataset.touched) {
+        slug.value = cleanSlug(this.value);
+      }
+    };
+    document.getElementById("regSlug").oninput = function() {
+      this.dataset.touched = "1";
+      this.value = cleanSlug(this.value);
+    };
+
+    document.getElementById("registerBtn").onclick = function() {
+      var regError = document.getElementById("regError");
+      var regOk = document.getElementById("regOk");
+      show(regError, "");
+      show(regOk, "");
+
+      var code = cleanCode(document.getElementById("regCode").value);
+      var business = document.getElementById("regBusiness").value.trim();
+      var whatsapp = cleanWhatsapp(document.getElementById("regWhatsapp").value);
+      var slug = cleanSlug(document.getElementById("regSlug").value);
+      var email = document.getElementById("regEmail").value.trim();
+      var password = document.getElementById("regPassword").value;
+
+      if (!code) return show(regError, "Enter the registration code from admin.");
+      if (!business) return show(regError, "Enter business name.");
+      if (whatsapp.length < 10) return show(regError, "Enter a valid WhatsApp number with country code.");
+      if (!slug) return show(regError, "Enter shop link name.");
+      if (!email) return show(regError, "Enter email.");
+      if (password.length < 6) return show(regError, "Password must be at least 6 characters.");
+
+      // 1) Check code is valid and unused
+      sb.from("access_codes").select("*").eq("code", code).maybeSingle()
+        .then(function(codeRes) {
+          if (codeRes.error) throw codeRes.error;
+          if (!codeRes.data) throw new Error("Invalid registration code.");
+          if (codeRes.data.is_used) throw new Error("This code has already been used.");
+
+          var access = codeRes.data;
+
+          // 2) Create auth user
+          return sb.auth.signUp({ email: email, password: password }).then(function(res) {
+            if (res.error) throw res.error;
+            var user = res.data.user;
+            if (!user) throw new Error("Could not create account. Try again.");
+
+            // 3) Create seller profile
+            return sb.from("seller_profiles").insert({
+              id: user.id,
+              business_name: business,
+              whatsapp: whatsapp,
+              shop_slug: slug,
+              phone_display: whatsapp,
+              access_code_id: access.id
+            }).then(function(ins) {
+              if (ins.error) throw ins.error;
+
+              // 4) Mark code as used
+              return sb.from("access_codes").update({
+                is_used: true,
+                used_by: user.id,
+                used_at: new Date().toISOString()
+              }).eq("id", access.id).eq("is_used", false).then(function(upd) {
+                if (upd.error) throw upd.error;
+                show(regOk, "Account created. Opening dashboard...");
+                window.location.href = "./dashboard.html";
+              });
+            });
+          });
+        })
+        .catch(function(err) {
+          show(regError, err.message || String(err));
+        });
+    };
+
+    document.getElementById("loginBtn").onclick = function() {
+      var loginError = document.getElementById("loginError");
+      show(loginError, "");
+      var email = document.getElementById("loginEmail").value.trim();
+      var password = document.getElementById("loginPassword").value;
+
+      sb.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+        if (res.error) throw res.error;
+        window.location.href = "./dashboard.html";
+      }).catch(function(err) {
+        show(loginError, err.message || String(err));
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (res.data.session) {
+        window.location.href = "./dashboard.html";
+      }
+    });
+  </script>
+</body>
+  </html>
