@@ -1,1 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Market Link — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --line: #2a3544;
+      --text: #e8eef5;
+      --muted: #8b9bb0;
+      --accent: #3dd68c;
+      --input: #121a24;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(900px 500px at 50% -10%, #1a3a2a 0%, var(--bg) 55%);
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 20px 12px 48px; }
+    .pill { color: var(--accent); font-size: 12px; letter-spacing: 0.12em; font-weight: 700; margin: 0 0 6px; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .sub { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
+    input, textarea {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 12px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      font-family: inherit;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary { background: var(--accent); color: #0a1a12; width: 100%; margin-top: 10px; }
+    .ghost { background: transparent; color: var(--muted); }
+    .danger { background: #3a1515; color: #ffb4b4; border: 1px solid #5c2424; }
+    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .row-btns button { flex: 1; min-width: 100px; }
+    .error, .ok {
+      display: none;
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .error { background: #3a1515; color: #ffb4b4; border: 1px solid #5c2424; }
+    .ok { background: #14301a; color: #b7f5c2; border: 1px solid #2a5a36; }
+    .error.show, .ok.show { display: block; }
+    .share {
+      background: #1a3a2a;
+      border: 1px solid #2f5a42;
+      border-radius: 12px;
+      padding: 12px;
+      word-break: break-all;
+      font-size: 14px;
+    }
+    .share a { color: var(--accent); }
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--input);
+    }
+    .item b { color: var(--accent); }
+    .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .thumbs img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #0a1018;
+    }
+    .thumbs .ph {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: #0a1018;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <p class="pill">MARKET LINK</p>
+        <h1 id="bizTitle">Dashboard</h1>
+        <p class="sub" id="welcomeLine">Loading...</p>
+      </div>
+      <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+    </div>
 
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px">Your shop link</div>
+      <div class="share" id="shopLinkBox">Loading...</div>
+      <button class="primary" id="copyLinkBtn" type="button">Copy shop link</button>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:6px">Business profile</div>
+      <label>Business name</label>
+      <input id="businessName" type="text" />
+      <label>WhatsApp number</label>
+      <input id="whatsapp" type="text" placeholder="2348012345678" />
+      <p class="hint">Country code + number, no + or spaces. Example: 2347025329640</p>
+      <label>Shop link name (slug)</label>
+      <input id="shopSlug" type="text" />
+      <button class="primary" id="saveProfileBtn" type="button">Save profile</button>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:6px">Add product</div>
+      <input type="hidden" id="editId" value="" />
+      <label>Product photos (you can select many)</label>
+      <input id="productImages" type="file" accept="image/*" multiple />
+      <p class="hint">Select 1–10 photos for the same product / price.</p>
+      <label>Product name</label>
+      <input id="productName" type="text" placeholder="e.g. Ankara Gown" />
+      <label>Price (₦)</label>
+      <input id="productPrice" type="number" min="0" step="0.01" placeholder="0" />
+      <label>Description</label>
+      <textarea id="productDescription" placeholder="Write about this product: sizes, colours, material, delivery, etc."></textarea>
+      <div class="row-btns">
+        <button class="primary" id="saveProductBtn" type="button" style="margin-top:0">Save product</button>
+        <button class="ghost" id="cancelEditBtn" type="button" style="margin-top:0">Cancel edit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px">Your products</div>
+      <div id="productList" class="meta">Loading...</div>
+    </div>
+
+    <div class="error" id="msgError"></div>
+    <div class="ok" id="msgOk"></div>
+  </div>
+  <script>
+    var SUPABASE_URL = "https://mjtpfusiurqvlaxkpenm.supabase.co";
+    var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdHBmdXNpdXJxdmxheGtwZW5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4ODMyNDksImV4cCI6MjEwMzQ1OTI0OX0.Irdh4ERkCOMCy_kp8onh61N8sBD77YscCp1e5kvvXL8";
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    var profile = null;
+    var products = [];
+    var msgError = document.getElementById("msgError");
+    var msgOk = document.getElementById("msgOk");
+
+    function show(el, msg) {
+      el.textContent = msg || "";
+      if (msg) el.classList.add("show"); else el.classList.remove("show");
+    }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function cleanSlug(s) {
+      return String(s || "").toLowerCase().trim()
+        .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+        .replace(/-+/g, "-").replace(/^-|-$/g, "");
+    }
+    function cleanWhatsapp(s) {
+      var n = String(s || "").replace(/\D/g, "");
+      if (n.length === 11 && n.charAt(0) === "0") n = "234" + n.slice(1);
+      if (n.indexOf("2340") === 0 && n.length === 14) n = "234" + n.slice(4);
+      return n;
+    }
+    function money(n) {
+      return Number(n || 0).toLocaleString();
+    }
+    function shopUrl() {
+      if (!profile || !profile.shop_slug) return "";
+      return window.location.origin + "/shop.html?s=" + encodeURIComponent(profile.shop_slug);
+    }
+
+    function renderProfile() {
+      document.getElementById("bizTitle").textContent = profile.business_name || "Dashboard";
+      document.getElementById("welcomeLine").textContent = "Manage products & WhatsApp orders";
+      document.getElementById("businessName").value = profile.business_name || "";
+      document.getElementById("whatsapp").value = profile.whatsapp || "";
+      document.getElementById("shopSlug").value = profile.shop_slug || "";
+      var link = shopUrl();
+      document.getElementById("shopLinkBox").innerHTML =
+        link ? '<a href="' + esc(link) + '" target="_blank">' + esc(link) + "</a>" : "Save a shop slug first";
+    }
+
+    function thumbsHtml(p) {
+      var urls = (p.images && p.images.length) ? p.images : (p.image_url ? [p.image_url] : []);
+      if (!urls.length) return '<div class="thumbs"><div class="ph"></div></div>';
+      var h = '<div class="thumbs">';
+      for (var i = 0; i < urls.length; i++) {
+        h += '<img src="' + esc(urls[i]) + '" alt="" />';
+      }
+      h += "</div>";
+      return h;
+    }
+
+    function renderProducts() {
+      if (!products.length) {
+        document.getElementById("productList").innerHTML =
+          '<div class="meta">No products yet. Add name, price, description and photos.</div>';
+        return;
+      }
+      var html = "";
+      for (var i = 0; i < products.length; i++) {
+        var p = products[i];
+        var count = (p.images && p.images.length) ? p.images.length : (p.image_url ? 1 : 0);
+        html += '<div class="item" data-id="' + p.id + '">';
+        html += thumbsHtml(p);
+        html += "<div style='margin-top:8px'><b>" + esc(p.name) + "</b>";
+        html += '<div class="meta">₦' + money(p.price) + " · " + count + " photo(s)</div>";
+        if (p.description) {
+          html += '<div class="meta">' + esc(p.description) + "</div>";
+        }
+        html += '<div class="row-btns">';
+        html += '<button class="primary edit-btn" type="button">Edit</button>';
+        html += '<button class="danger del-btn" type="button">Delete</button>';
+        html += "</div></div></div>";
+      }
+      document.getElementById("productList").innerHTML = html;
+
+      var items = document.querySelectorAll("#productList .item");
+      for (var j = 0; j < items.length; j++) {
+        (function(item) {
+          var id = item.getAttribute("data-id");
+          item.querySelector(".edit-btn").onclick = function() {
+            var row = null;
+            for (var k = 0; k < products.length; k++) if (String(products[k].id) === String(id)) row = products[k];
+            if (!row) return;
+            document.getElementById("editId").value = row.id;
+            document.getElementById("productName").value = row.name || "";
+            document.getElementById("productPrice").value = row.price == null ? "" : row.price;
+            document.getElementById("productDescription").value = row.description || "";
+            document.getElementById("productImages").value = "";
+            show(msgOk, "Editing. New photos you select will be ADDED. Description will update.");
+            show(msgError, "");
+            window.scrollTo(0, 0);
+          };
+          item.querySelector(".del-btn").onclick = function() {
+            if (!confirm("Delete this product and all its photos?")) return;
+            show(msgError, ""); show(msgOk, "");
+            sb.from("products").delete().eq("id", id).then(function(res) {
+              if (res.error) return show(msgError, res.error.message);
+              show(msgOk, "Product deleted.");
+              return loadProducts();
+            });
+          };
+        })(items[j]);
+      }
+    }
+
+    function loadProfile(uid) {
+      return sb.from("seller_profiles").select("*").eq("id", uid).maybeSingle()
+        .then(function(res) {
+          if (res.error) throw res.error;
+          if (!res.data) throw new Error("Seller profile not found. Register again from the home page.");
+          profile = res.data;
+          renderProfile();
+        });
+    }
+
+    function loadProducts() {
+      return sb.from("products").select("*").eq("seller_id", profile.id).order("created_at", { ascending: false })
+        .then(function(res) {
+          if (res.error) throw res.error;
+          products = res.data || [];
+          if (!products.length) {
+            renderProducts();
+            return;
+          }
+          var ids = products.map(function(p) { return p.id; });
+          return sb.from("product_images").select("*").in("product_id", ids).order("sort_order")
+            .then(function(imgRes) {
+              if (imgRes.error) throw imgRes.error;
+              var by = {};
+              var rows = imgRes.data || [];
+              for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                if (!by[r.product_id]) by[r.product_id] = [];
+                by[r.product_id].push(r.image_url);
+              }
+              for (var j = 0; j < products.length; j++) {
+                products[j].images = by[products[j].id] || [];
+              }
+              renderProducts();
+            });
+        });
+    }
+
+    function uploadOneImage(file, sellerId) {
+      var ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      var path = sellerId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+      return sb.storage.from("product-images").upload(path, file, { upsert: false })
+        .then(function(up) {
+          if (up.error) throw up.error;
+          return sb.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+        });
+    }
+
+    function uploadMany(files, sellerId) {
+      var list = [];
+      for (var i = 0; i < files.length; i++) list.push(files[i]);
+      if (!list.length) return Promise.resolve([]);
+      var chain = Promise.resolve([]);
+      list.forEach(function(file) {
+        chain = chain.then(function(urls) {
+          return uploadOneImage(file, sellerId).then(function(url) {
+            urls.push(url);
+            return urls;
+          });
+        });
+      });
+      return chain;
+    }
+
+    function resetProductForm() {
+      document.getElementById("editId").value = "";
+      document.getElementById("productName").value = "";
+      document.getElementById("productPrice").value = "";
+      document.getElementById("productDescription").value = "";
+      document.getElementById("productImages").value = "";
+    }
+
+    document.getElementById("saveProfileBtn").onclick = function() {
+      show(msgError, ""); show(msgOk, "");
+      var business_name = document.getElementById("businessName").value.trim();
+      var whatsapp = cleanWhatsapp(document.getElementById("whatsapp").value);
+      var shop_slug = cleanSlug(document.getElementById("shopSlug").value);
+      if (!business_name) return show(msgError, "Enter business name.");
+      if (whatsapp.length < 10) return show(msgError, "Enter valid WhatsApp number with country code.");
+      if (!shop_slug) return show(msgError, "Enter shop link name.");
+
+      sb.from("seller_profiles").update({
+        business_name: business_name,
+        whatsapp: whatsapp,
+        shop_slug: shop_slug,
+        phone_display: whatsapp
+      }).eq("id", profile.id).then(function(res) {
+        if (res.error) return show(msgError, res.error.message);
+        show(msgOk, "Profile saved.");
+        return loadProfile(profile.id);
+      });
+    };
+
+    document.getElementById("saveProductBtn").onclick = function() {
+      show(msgError, ""); show(msgOk, "");
+      var editId = document.getElementById("editId").value;
+      var name = document.getElementById("productName").value.trim();
+      var price = Number(document.getElementById("productPrice").value);
+      var description = document.getElementById("productDescription").value.trim() || null;
+      var files = document.getElementById("productImages").files;
+
+      if (!name) return show(msgError, "Enter product name.");
+      if (!(price >= 0)) return show(msgError, "Enter a valid price.");
+      if (!editId && (!files || !files.length)) {
+        return show(msgError, "Select at least one product photo.");
+      }
+
+      var payload = {
+        name: name,
+        price: price,
+        description: description,
+        is_published: true
+      };
+
+      var saveChain;
+      if (editId) {
+        saveChain = sb.from("products").update(payload)
+          .eq("id", editId).eq("seller_id", profile.id)
+          .then(function(res) {
+            if (res.error) throw res.error;
+            return editId;
+          });
+      } else {
+        payload.seller_id = profile.id;
+        saveChain = sb.from("products").insert(payload).select("id").single()
+          .then(function(res) {
+            if (res.error) throw res.error;
+            return res.data.id;
+          });
+      }
+
+      saveChain.then(function(productId) {
+        return uploadMany(files, profile.id).then(function(urls) {
+          if (!urls.length) return productId;
+
+          var first = urls[0];
+          var rows = [];
+          for (var i = 0; i < urls.length; i++) {
+            rows.push({
+              product_id: productId,
+              image_url: urls[i],
+              sort_order: i
+            });
+          }
+
+          return sb.from("products").update({ image_url: first }).eq("id", productId)
+            .then(function(u) {
+              if (u.error) throw u.error;
+              return sb.from("product_images").insert(rows);
+            })
+            .then(function(ins) {
+              if (ins.error) throw ins.error;
+              return productId;
+            });
+        });
+      }).then(function() {
+        show(msgOk, editId ? "Product updated." : "Product published.");
+        resetProductForm();
+        return loadProducts();
+      }).catch(function(err) {
+        show(msgError, err.message || String(err));
+      });
+    };
+
+    document.getElementById("cancelEditBtn").onclick = function() {
+      resetProductForm();
+      show(msgOk, "Edit cancelled.");
+      show(msgError, "");
+    };
+
+    document.getElementById("copyLinkBtn").onclick = function() {
+      var link = shopUrl();
+      if (!link) return show(msgError, "Save profile with a shop slug first.");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(function() {
+          show(msgOk, "Shop link copied.");
+        }).catch(function() {
+          prompt("Copy this link:", link);
+        });
+      } else {
+        prompt("Copy this link:", link);
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = function() {
+      sb.auth.signOut().then(function() {
+        window.location.href = "./index.html";
+      });
+    };
+
+    sb.auth.getSession().then(function(res) {
+      if (!res.data.session) {
+        window.location.href = "./index.html";
+        return;
+      }
+      var uid = res.data.session.user.id;
+      loadProfile(uid).then(function() {
+        return loadProducts();
+      }).catch(function(err) {
+        show(msgError, err.message || String(err));
+      });
+    });
+  </script>
+</body>
+</html>
